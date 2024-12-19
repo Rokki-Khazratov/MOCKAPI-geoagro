@@ -8,7 +8,8 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your_default_secret_key_here')
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['.vercel.app', '.now.sh']
+
 
 BASE_URL = 'http://127.0.0.1:8000/'
 
@@ -123,6 +124,7 @@ MEDIA_URL = '/storage/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'storage')
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
