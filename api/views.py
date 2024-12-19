@@ -1,3 +1,8 @@
+from django.http import HttpResponse
+
+def home_view(request):
+    return HttpResponse("Halo Weld")
+
 # from rest_framework import generics
 # from rest_framework import filters
 # from rest_framework.decorators import api_view
