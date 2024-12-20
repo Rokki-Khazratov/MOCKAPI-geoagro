@@ -36,10 +36,27 @@ class PlantationFruitAreaAdmin(admin.ModelAdmin):
     list_display = ('plantation', 'fruit', 'planted_year', 'area')
 
 
+@admin.register(Plantation)
+class PlantationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'district', 'farmer', 'garden_established_year', 'total_area', 'land_type', 'is_fertile', 'is_checked')
+    search_fields = ('district__name', 'land_type', 'farmer__name')
+    list_filter = ('district', 'land_type', 'is_fertile', 'is_checked', 'farmer')
+    autocomplete_fields = ['farmer']  # Добавляем автодополнение для выбора фермера
+    inlines = [PlantationCoordinatesInline, PlantationImageInline, PlantationFruitAreaInline]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs  # Суперпользователь видит все
+        return qs.filter(district__users=request.user)
+
+
 @admin.register(Farmer)
 class FarmerAdmin(admin.ModelAdmin):
     list_display = ('name', 'founder_name', 'director_name', 'phone_number', 'inn', 'established_year')
     search_fields = ('name', 'founder_name', 'director_name', 'inn')
+    list_filter = ('established_year',)
+
 
 
 @admin.register(Investment)
@@ -69,19 +86,6 @@ class SubsidyAdmin(admin.ModelAdmin):
     search_fields = ('plantation__name', 'contract_number', 'direction')
 
 
-@admin.register(Plantation)
-class PlantationAdmin(admin.ModelAdmin):
-    list_display = ('id', 'district', 'garden_established_year', 'total_area', 'land_type')
-    search_fields = ('district__name', 'land_type')
-    list_filter = ('district', 'land_type', 'is_fertile')
-    inlines = [PlantationCoordinatesInline, PlantationImageInline, PlantationFruitAreaInline]
-
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs  # Суперпользователь видит все
-        return qs.filter(district__users=request.user)
-
 
 @admin.register(Region)
 class RegionAdmin(admin.ModelAdmin):
@@ -100,3 +104,8 @@ class DistrictAdmin(admin.ModelAdmin):
 class FruitsAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
+
+@admin.register(FruitVariety)
+class FruitVarietyAdmin(admin.ModelAdmin):
+    list_display = ('name','fruit')
+    search_fields = ('name','fruit')

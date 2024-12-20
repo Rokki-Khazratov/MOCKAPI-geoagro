@@ -3,28 +3,29 @@ from django.http import HttpResponse
 def home_view(request):
     return HttpResponse("Halo Weld")
 
-# from rest_framework import generics
-# from rest_framework import filters
-# from rest_framework.decorators import api_view
-# from rest_framework import permissions
-# from rest_framework.response import Response
-# from rest_framework.status import HTTP_201_CREATED
-# from rest_framework_simplejwt.views import TokenObtainPairView
-# from rest_framework.pagination import PageNumberPagination
-# from django_filters.rest_framework import DjangoFilterBackend
-# from rest_framework.views import APIView
-# from rest_framework_simplejwt.views import TokenRefreshView
-# from rest_framework_simplejwt.tokens import RefreshToken
-# from rest_framework.exceptions import AuthenticationFailed
-# from rest_framework_simplejwt.authentication import JWTAuthentication
-# from rest_framework import status
-# from django.db.models import Q,Sum
+from rest_framework import generics
+from rest_framework import filters
+from rest_framework.decorators import api_view
+from rest_framework import permissions
+from rest_framework.response import Response
+from rest_framework.status import HTTP_201_CREATED
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework import status
+from django.db.models import Q,Sum
 
-# from .permissions import IsDistrictOwner, IsDistrictOwnerForCoordinates
-# from .filters import PlantationFilter, StatisticsFilter
-# from .models import *
-# from .serializers import *
-# from .plantations import *
+from .permissions import IsDistrictOwner, IsDistrictOwnerForCoordinates
+from .filters import PlantationFilter, StatisticsFilter
+from .models import *
+from .plantation_models import *
+from .serializers import *
+from .plantations import *
 
 
 
@@ -222,218 +223,235 @@ def home_view(request):
 
 
 
-# class PlantationPagination(PageNumberPagination):
-#     page_size = 10  # количество объектов на страницу
-#     page_size_query_param = 'page_size'
-#     max_page_size = 100
+class PlantationPagination(PageNumberPagination):
+    page_size = 10  # количество объектов на страницу
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
-# class MapPlantationPagination(PageNumberPagination):
-#     page_size = 100 
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000
-
-
-
-
-
-# class PlantationListAPIView(generics.ListAPIView):
-#     queryset = Plantation.objects.all()
-#     serializer_class = PlantationListSerializer
-#     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
-#     filterset_class = PlantationFilter 
-
-#     def get_queryset(self):
-#         queryset = super().get_queryset()
-#         return queryset
-
-
-# class MapPlantationListAPIView(generics.ListAPIView):
-#     serializer_class = MapPlantationSerializer
-#     pagination_class = MapPlantationPagination
-
-#     def get_queryset(self):
-#         queryset = Plantation.objects.all()
-#         status = self.request.query_params.get('status', None)
-#         region_name = self.request.query_params.get('region', None)
-#         district_id = self.request.query_params.get('district_id', None)
-#         name = self.request.query_params.get('name', None)
-#         inn = self.request.query_params.get('inn', None)
-#         plantation_type = self.request.query_params.get('plantation_type', None)
-
-#         #filters   
-#         if status:
-#             queryset = queryset.filter(status=status)
-#         if region_name:
-#             queryset = queryset.filter(district__region__name__icontains=region_name)
-#         if district_id:
-#             queryset = queryset.filter(district__id=district_id)
-#         if plantation_type:
-#             queryset = queryset.filter(plantation_type=plantation_type)
-
-#         #search           
-#         if name:
-#             queryset = queryset.filter(name__icontains=name)
-#         if inn:
-#             queryset = queryset.filter(inn=inn)
-
-#         return queryset
-
-
-
-
-# class PlantationFullListAPIView(generics.ListAPIView):
-#     serializer_class = PlantationDetailSerializer
-#     pagination_class = PlantationPagination
-#     filter_backends = (filters.OrderingFilter,)
-
-#     def get_queryset(self):
-#         queryset = Plantation.objects.all()
-
-#         # Получаем параметры фильтрации из запроса
-#         name = self.request.query_params.get('name', None)
-#         inn = self.request.query_params.get('inn', None)
-#         region_name = self.request.query_params.get('region_name', None)
-#         district_id = self.request.query_params.get('district_id', None)
-#         plantation_type = self.request.query_params.get('plantation_type', None)
-#         fruit_id = self.request.query_params.get('fruit_id', None)
-#         fruit_name = self.request.query_params.get('fruit_name', None)
-#         min_area = self.request.query_params.get('min_area', None)
-#         max_area = self.request.query_params.get('max_area', None)
-#         is_deleting = self.request.query_params.get('is_deleting', None)
-#         is_checked = self.request.query_params.get('is_checked', None)
-
-#         # Фильтруем по имени
-#         if name:
-#             queryset = queryset.filter(name__icontains=name)
-
-#         # Фильтруем по INN
-#         if inn:
-#             queryset = queryset.filter(inn=inn)
-
-#         # Фильтруем по имени региона
-#         if region_name:
-#             queryset = queryset.filter(district__region__name__icontains=region_name)
-
-#         # Фильтруем по ID района
-#         if district_id:
-#             queryset = queryset.filter(district__id=district_id)
-
-#         # Фильтруем по типу плантации
-#         if plantation_type:
-#             queryset = queryset.filter(plantation_type=plantation_type)
-
-#         # Фильтруем по фруктам
-#         if fruit_id:
-#             queryset = queryset.filter(fruit_area__fruit__id=fruit_id)
-
-#         # Фильтруем по названию фрукта
-#         if fruit_name:
-#             queryset = queryset.filter(fruit_area__fruit__name__icontains=fruit_name)
-
-#         # Фильтруем по минимальной площади
-#         if min_area:
-#             queryset = queryset.filter(fruit_area__area__gte=min_area)
-
-#         # Фильтруем по максимальной площади
-#         if max_area:
-#             queryset = queryset.filter(fruit_area__area__lte=max_area)
-
-#         # Фильтруем по is_deleting
-#         if is_deleting:
-#             queryset = queryset.filter(is_deleting=is_deleting.lower() == 'true')
-
-#         # Фильтруем по is_checked
-#         if is_checked:
-#             queryset = queryset.filter(is_checked=is_checked.lower() == 'true')
-
-#         return queryset
-
-#     def perform_create(self, serializer):
-#         serializer.save()
+class MapPlantationPagination(PageNumberPagination):
+    page_size = 100 
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
 
 
 
 
 
+class PlantationListAPIView(generics.ListAPIView):
+    queryset = Plantation.objects.all()
+    serializer_class = PlantationListSerializer
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filterset_class = PlantationFilter 
 
-# class PlantationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
-#     queryset = Plantation.objects.all()
-#     serializer_class = PlantationDetailSerializer
-
-#     def update(self, request, *args, **kwargs):
-#         plantation = self.get_object()
-#         data = request.data
-
-#         if 'established_date' in data:
-#             # Преобразуем дату в строку
-#             data['established_date'] = data['established_date']
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        return queryset
 
 
-#         if 'is_deleting' in data:
-#             plantation.is_deleting = data['is_deleting']
+class MapPlantationListAPIView(generics.ListAPIView):
+    serializer_class = MapPlantationSerializer
+    pagination_class = MapPlantationPagination
 
-#         # Вручную обновляем поля с помощью сериализатора
-#         serializer = self.get_serializer(plantation, data=data, partial=True)
-#         serializer.is_valid(raise_exception=True)
-#         self.perform_update(serializer)
+    def get_queryset(self):
+        queryset = Plantation.objects.all()
+        status = self.request.query_params.get('status', None)
+        region_name = self.request.query_params.get('region', None)
+        district_id = self.request.query_params.get('district_id', None)
+        name = self.request.query_params.get('name', None)
+        inn = self.request.query_params.get('inn', None)
+        plantation_type = self.request.query_params.get('plantation_type', None)
 
-#         # Возвращаем успешный ответ с обновленными данными
-#         return Response(serializer.data, status=status.HTTP_200_OK)
+        #filters   
+        if status:
+            queryset = queryset.filter(status=status)
+        if region_name:
+            queryset = queryset.filter(district__region__name__icontains=region_name)
+        if district_id:
+            queryset = queryset.filter(district__id=district_id)
+        if plantation_type:
+            queryset = queryset.filter(plantation_type=plantation_type)
 
-#     def perform_update(self, serializer):
-#         # Метод для сохранения объекта
-#         serializer.save()
+        #search           
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+        if inn:
+            queryset = queryset.filter(inn=inn)
+
+        return queryset
 
 
 
-# # class PlantationCreateAPIView(APIView):
-# #     def post(self, request, *args, **kwargs):
-# #         user = request.user
 
-# #         if user.district:
-# #             print(f"User's district: {user.district.name}")
-# #         print(f"Authenticated user: {user.id}")
+class PlantationFullListAPIView(generics.ListAPIView):
+    serializer_class = PlantationDetailSerializer
+    pagination_class = PlantationPagination
+    filter_backends = (filters.OrderingFilter,)
+
+    def get_queryset(self):
+        queryset = Plantation.objects.all()
+
+        # Получаем параметры фильтрации из запроса
+        name = self.request.query_params.get('name', None)
+        inn = self.request.query_params.get('inn', None)
+        region_name = self.request.query_params.get('region_name', None)
+        district_id = self.request.query_params.get('district_id', None)
+        plantation_type = self.request.query_params.get('plantation_type', None)
+        fruit_id = self.request.query_params.get('fruit_id', None)
+        fruit_name = self.request.query_params.get('fruit_name', None)
+        min_area = self.request.query_params.get('min_area', None)
+        max_area = self.request.query_params.get('max_area', None)
+        is_deleting = self.request.query_params.get('is_deleting', None)
+        is_checked = self.request.query_params.get('is_checked', None)
+
+        # Фильтруем по имени
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+
+        # Фильтруем по INN
+        if inn:
+            queryset = queryset.filter(inn=inn)
+
+        # Фильтруем по имени региона
+        if region_name:
+            queryset = queryset.filter(district__region__name__icontains=region_name)
+
+        # Фильтруем по ID района
+        if district_id:
+            queryset = queryset.filter(district__id=district_id)
+
+        # Фильтруем по типу плантации
+        if plantation_type:
+            queryset = queryset.filter(plantation_type=plantation_type)
+
+        # Фильтруем по фруктам
+        if fruit_id:
+            queryset = queryset.filter(fruit_area__fruit__id=fruit_id)
+
+        # Фильтруем по названию фрукта
+        if fruit_name:
+            queryset = queryset.filter(fruit_area__fruit__name__icontains=fruit_name)
+
+        # Фильтруем по минимальной площади
+        if min_area:
+            queryset = queryset.filter(fruit_area__area__gte=min_area)
+
+        # Фильтруем по максимальной площади
+        if max_area:
+            queryset = queryset.filter(fruit_area__area__lte=max_area)
+
+        # Фильтруем по is_deleting
+        if is_deleting:
+            queryset = queryset.filter(is_deleting=is_deleting.lower() == 'true')
+
+        # Фильтруем по is_checked
+        if is_checked:
+            queryset = queryset.filter(is_checked=is_checked.lower() == 'true')
+
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+
+
+
+
+
+
+
+from rest_framework import generics, status
+from rest_framework.response import Response
+from django.core.exceptions import PermissionDenied
+from .models import Plantation
+from .serializers import PlantationDetailSerializer
+
+
+class PlantationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Plantation.objects.all()
+    serializer_class = PlantationDetailSerializer
+
+    def update(self, request, *args, **kwargs):
+        plantation = self.get_object()
+        data = request.data
+
+        # Проверяем изменение is_checked
+        if 'is_checked' in data:
+            # Разрешить изменение только суперпользователю
+            if not request.user.is_superuser:
+                return Response(
+                    {"detail": "Только суперпользователи могут изменять поле 'is_checked'."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            # Если is_checked=True, очищаем prev_data
+            if data['is_checked']:
+                plantation.is_checked = True
+                plantation.clear_prev_data()
+            else:
+                plantation.is_checked = False
+
+        # Обновляем остальные данные через сериализатор
+        serializer = self.get_serializer(plantation, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def perform_update(self, serializer):
+        # Сохраняем объект с изменениями
+        serializer.save()
+
+
+
+
+
+class PlantationCreateAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        user = request.user
+
+        if user.district:
+            print(f"User's district: {user.district.name}")
+        print(f"Authenticated user: {user.id}")
         
-# #         # Печатаем район пользователя
-# #         print(f"User's district: {user.district}")  # Теперь это только один район
+        # Печатаем район пользователя
+        print(f"User's district: {user.district}")  # Теперь это только один район
 
-# #         if not user.district:  # Проверяем, что у пользователя есть хотя бы один район
-# #             return Response({"detail": "User must be associated with a district."}, status=status.HTTP_400_BAD_REQUEST)
+        if not user.district:  # Проверяем, что у пользователя есть хотя бы один район
+            return Response({"detail": "User must be associated with a district."}, status=status.HTTP_400_BAD_REQUEST)
 
-# #         if not user.is_superuser:
-# #             # Проверяем, что не пытается изменить 'is_deleting' или 'is_checked'
-# #             if 'is_deleting' in request.data or 'is_checked' in request.data:
-# #                 return Response({"detail": "Permission denied. Only superusers can modify is_deleting or is_checked."},
-# #                                  status=status.HTTP_403_FORBIDDEN)
+        if not user.is_superuser:
+            # Проверяем, что не пытается изменить 'is_deleting' или 'is_checked'
+            if 'is_deleting' in request.data or 'is_checked' in request.data:
+                return Response({"detail": "Permission denied. Only superusers can modify is_deleting or is_checked."},
+                                 status=status.HTTP_403_FORBIDDEN)
 
-# #         serializer = PlantationCreateSerializer(data=request.data)
+        serializer = PlantationCreateSerializer(data=request.data)
 
-# #         if serializer.is_valid():
-# #             # Присваиваем район пользователя
-# #             validated_data = serializer.validated_data
-# #             validated_data['district'] = user.district  # Используем район пользователя
+        if serializer.is_valid():
+            # Присваиваем район пользователя
+            validated_data = serializer.validated_data
+            validated_data['district'] = user.district  # Используем район пользователя
 
-# #             plantation = serializer.save()  # Создание объекта плантации
+            plantation = serializer.save()  # Создание объекта плантации
 
-# #             # Проверяем, что район плантации соответствует району пользователя
-# #             if plantation.district != user.district:
-# #                 raise PermissionDenied("You do not have permission to create plantations in this district.")
+            # Проверяем, что район плантации соответствует району пользователя
+            if plantation.district != user.district:
+                raise PermissionDenied("You do not have permission to create plantations in this district.")
 
-# #             return Response(PlantationDetailSerializer(plantation).data, status=status.HTTP_201_CREATED)
+            return Response(PlantationDetailSerializer(plantation).data, status=status.HTTP_201_CREATED)
 
-# #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# class PlantationCreateAPIView(APIView):
-#     def post(self, request, *args, **kwargs):
-#         serializer = PlantationCreateSerializer(data=request.data)
+class PlantationCreateAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = PlantationCreateSerializer(data=request.data)
 
-#         if serializer.is_valid():
+        if serializer.is_valid():
 
-#             # Создание объекта плантации
-#             plantation = serializer.save()
+            # Создание объекта плантации
+            plantation = serializer.save()
 
-#             # Возвращаем подробности о созданной плантации
-#             return Response(PlantationDetailSerializer(plantation).data, status=status.HTTP_201_CREATED)
+            # Возвращаем подробности о созданной плантации
+            return Response(PlantationDetailSerializer(plantation).data, status=status.HTTP_201_CREATED)
 
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -2,203 +2,185 @@ from rest_framework import serializers
 from core.settings import BASE_URL
 from .models import *
 from .plantation_models import *
-from .serializers import *
 
+
+# Сериализатор для изображений
 class PlantationImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlantationImage
-        fields = ['image']  # Только поле image
+        fields = ['id', 'image']
+
+
+# Сериализатор для координат
+class PlantationCoordinatesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlantationCoordinates
+        fields = ['id', 'latitude', 'longitude']
+
+
+# Сериализатор для фруктовых площадей
+class PlantationFruitAreaSerializer(serializers.ModelSerializer):
+    fruit_name = serializers.CharField(source='fruit.name', read_only=True)
+    variety_name = serializers.CharField(source='variety.name', read_only=True)
 
     class Meta:
         model = PlantationFruitArea
-        fields = ['fruit', 'area']
+        fields = ['id', 'fruit', 'fruit_name', 'variety', 'variety_name', 'rootstock', 'planted_year', 'area']
 
 
+# Сериализатор для списка плантаций
 class PlantationListSerializer(serializers.ModelSerializer):
-    district = serializers.CharField(source='district.name') 
-    plantation_type = serializers.CharField(source='get_plantation_type_display')
+    district_name = serializers.CharField(source='district.name', read_only=True)
+    region_name = serializers.CharField(source='district.region.name', read_only=True)
 
     class Meta:
         model = Plantation
-        fields = ['id', 'name', 'inn', 'district', 'plantation_type', 'status', 'established_date', 'is_checked', 'is_deleting','prev_data']
+        fields = ['id', 'garden_established_year', 'district_name', 'region_name', 'total_area', 'is_deleting', 'is_checked','prev_data']
 
+
+# Сериализатор для отображения на карте
 class MapPlantationSerializer(serializers.ModelSerializer):
-    district = serializers.CharField(source='district.name')
-    coordinates = serializers.SerializerMethodField()
+    coordinates = PlantationCoordinatesSerializer(many=True, read_only=True)
 
     class Meta:
         model = Plantation
-        fields = ['id', 'name', 'district', 'coordinates','status']
-
-    def get_coordinates(self, obj):
-        coordinates = obj.coordinates.all()
-        return [{"latitude": coord.latitude, "longitude": coord.longitude} for coord in coordinates]
+        fields = ['id', 'garden_established_year', 'coordinates', 'is_fertile']
 
 
-
-
+# Детализированный сериализатор плантации
 class PlantationDetailSerializer(serializers.ModelSerializer):
     district = serializers.SerializerMethodField()
-    coordinates = serializers.SerializerMethodField()
-    fruit_areas = serializers.SerializerMethodField()  # Обновляем метод для получения фруктовых областей
-    plantation_type = serializers.CharField(source='get_plantation_type_display')
-    images = serializers.SerializerMethodField()
-    updated_at = serializers.SerializerMethodField()
-    is_deleting = serializers.BooleanField()
-    established_date = serializers.DateField(format='%Y-%m-%d')  # Форматируем дату в строку
+    farmer = serializers.SerializerMethodField()
+    investment = serializers.SerializerMethodField()
+    reservoir = serializers.SerializerMethodField()
+    trellis = serializers.SerializerMethodField()
+    fruit_areas = PlantationFruitAreaSerializer(many=True, read_only=True)
+    images = PlantationImageSerializer(many=True, read_only=True)
+    coordinates = PlantationCoordinatesSerializer(many=True, read_only=True)
+    subsidies = serializers.SerializerMethodField()
 
     class Meta:
         model = Plantation
         fields = [
-            'id', 'name', 'inn', 'district', 'plantation_type', 'status', 
-            'established_date', 'total_area', 'is_checked', 
-            'updated_at', 'coordinates', 'images', 'fruit_areas', 'is_deleting', 'prev_data'
+            'id', 'garden_established_year', 'total_area', 'irrigation_area', 'fertility_score',
+            'land_type', 'is_fertile', 'fenced', 'irrigation_systems_count', 'pump_station_count',
+            'reservoir_count', 'district', 'farmer', 'investment', 'reservoir', 'trellis',
+            'fruit_areas', 'images', 'coordinates', 'subsidies',
         ]
-    
+
     def get_district(self, obj):
         return {
             'name': obj.district.name,
             'region': obj.district.region.name
         }
 
-    def get_coordinates(self, obj):
-        return [{'latitude': coord.latitude, 'longitude': coord.longitude} for coord in obj.coordinates.all()]
-
-    def get_fruit_areas(self, obj):
-        return [
-            {
-                'fruit': fruit.fruit.name,
-                'variety': fruit.variety.name if fruit.variety else None,  # Добавляем сорт фрукта
-                'area': fruit.area
-            } 
-            for fruit in obj.fruit_area.all()
-        ]
-
-    def get_images(self, obj):
-        return [f"{BASE_URL}{image.image.url}" for image in obj.images.all()]
-
-    def get_updated_at(self, obj):
-        tz = timezone.get_fixed_timezone(5 * 60)
-        updated_at_tz = obj.updated_at.astimezone(tz)
+    def get_farmer(self, obj):
+        farmer = obj.farmer
         return {
-            "date": updated_at_tz.strftime('%Y-%m-%d'),
-            "time": updated_at_tz.strftime('%H:%M')
+            'name': farmer.name,
+            'founder_name': farmer.founder_name,
+            'director_name': farmer.director_name,
+            'phone_number': farmer.phone_number,
+            'address': farmer.address,
+            'inn': farmer.inn,
+            'established_year': farmer.established_year
+        } if farmer else None
+
+    def get_investment(self, obj):
+        investment = getattr(obj, 'investment', None)
+        if not investment:
+            return None
+        return {
+            'farm_type': investment.farm_type,
+            'investment_foreign': investment.investment_foreign,
+            'investment_local': investment.investment_local
         }
 
+    def get_reservoir(self, obj):
+        reservoir = getattr(obj, 'reservoir', None)
+        if not reservoir:
+            return None
+        return {
+            'reservoir_type': reservoir.reservoir_type,
+            'reservoir_volume': reservoir.reservoir_volume
+        }
+
+    def get_trellis(self, obj):
+        trellis = getattr(obj, 'trellis', None)
+        if not trellis:
+            return None
+        return {
+            'trellis_installed_area': trellis.trellis_installed_area,
+            'trellis_type': trellis.trellis_type,
+            'trellis_count': trellis.trellis_count
+        }
+
+    def get_subsidies(self, obj):
+        return [
+            {
+                'year': subsidy.year,
+                'contract_number': subsidy.contract_number,
+                'direction': subsidy.direction,
+                'amount': subsidy.amount,
+                'efficiency': 'Самарали' if subsidy.efficiency else 'Самарасиз'
+            }
+            for subsidy in obj.subsidies.all()
+        ]
 
 
 
-
-
-
-
-class PlantationCoordinatesSerializer(serializers.Serializer):
-    latitude = serializers.FloatField()
-    longitude = serializers.FloatField()
-
-
-class PlantationFruitAreaSerializer(serializers.ModelSerializer):
-    variety = serializers.PrimaryKeyRelatedField(queryset=FruitVariety.objects.all())  # Ожидаем только ID
-    fruit = serializers.SerializerMethodField()
-
-    class Meta:
-        model = PlantationFruitArea
-        fields = ['fruit', 'variety', 'area']
-
-    def get_fruit(self, obj):
-        """Получаем фрукт через сорт."""
-        return obj.variety.fruit.id if obj.variety else None
-
-
-
-
-
-class FruitVarietySerializer(serializers.ModelSerializer):
-    fruit_name = serializers.CharField(source='fruit.name')  # Отображаем имя фрукта, связанного с сортом
-    class Meta:
-        model = FruitVariety
-        fields = ['id', 'name', 'fruit','fruit_name']
-
-
-# class PlantationCreateSerializer(serializers.ModelSerializer):
-#     coordinates = PlantationCoordinatesSerializer(many=True)
-#     fruit_area = PlantationFruitAreaSerializer(many=True)
-#     images = serializers.ListField(child=serializers.CharField())  # Работает с URL изображений
-
-#     class Meta:
-#         model = Plantation
-#         fields = ['name', 'inn', 'district', 'plantation_type', 'status', 'established_date', 'total_area', 'coordinates', 'fruit_area', 'images']
-
-#     def create(self, validated_data):
-#         print(f"Validated data: {validated_data}")  # Лог для отслеживания валидированных данных
-
-#         coordinates_data = validated_data.pop('coordinates')
-#         fruit_area_data = validated_data.pop('fruit_area')
-#         images_data = validated_data.pop('images')
-
-#         # Получаем пользователя из контекста запроса
-#         user = self.context['request'].user
-#         print(f"User: {user}") 
-
-#         if not user.districts.exists():
-#             print("User is not assigned to any district")  # Лог, если у пользователя нет привязанных районов
-#             raise serializers.ValidationError("User must be assigned to a district")
-
-#         # Привязываем плантацию к району пользователя
-#         validated_data['district'] = user.districts.first()  # Привязываем к первому району пользователя
-
-#         # Создание самой плантации
-#         plantation = Plantation.objects.create(**validated_data)
-
-#         # Сохранение координат
-#         for coord in coordinates_data:
-#             PlantationCoordinates.objects.create(plantation=plantation, **coord)
-
-#         # Сохранение фруктовых площадей
-#         for fruit in fruit_area_data:
-#             PlantationFruitArea.objects.create(plantation=plantation, **fruit)
-
-#         # Сохранение изображений
-#         for image_url in images_data:
-#             PlantationImage.objects.create(plantation=plantation, image=image_url)
-
-#         print(f"Created plantation: {plantation}")  # Лог для отслеживания созданной плантации
-
-#         return plantation
-
-
-
+# Сериализатор для создания/обновления плантации
 class PlantationCreateSerializer(serializers.ModelSerializer):
     coordinates = PlantationCoordinatesSerializer(many=True)
-    fruit_area = PlantationFruitAreaSerializer(many=True)
-    images = serializers.ListField(child=serializers.CharField())  # Работает с URL изображений
+    fruit_areas = PlantationFruitAreaSerializer(many=True)
+    images = serializers.ListField(child=serializers.ImageField())
 
     class Meta:
         model = Plantation
-        fields = ['name', 'inn', 'district', 'plantation_type', 'status', 'established_date', 'total_area', 'coordinates', 'fruit_area', 'images']
+        fields = [
+            'garden_established_year', 'district', 'total_area', 'irrigation_area', 'fertility_score',
+            'land_type', 'is_fertile', 'fenced', 'irrigation_systems_count', 'pump_station_count',
+            'reservoir_count', 'coordinates', 'fruit_areas', 'images',
+        ]
 
     def create(self, validated_data):
-        coordinates_data = validated_data.pop('coordinates')
-        fruit_area_data = validated_data.pop('fruit_area')
-        images_data = validated_data.pop('images')
-
-        # Проверяем, что все необходимые данные для fruit_area и другие поля присутствуют
-        for fruit in fruit_area_data:
-            if 'fruit' not in fruit or 'variety' not in fruit or 'area' not in fruit:
-                print(fruit)
-                # print(fruit,request.data['variety'] )
-                raise serializers.ValidationError("Each fruit area entry must include 'fruit', 'variety', and 'area'.")
-
+        coordinates_data = validated_data.pop('coordinates', [])
+        fruit_areas_data = validated_data.pop('fruit_areas', [])
+        images_data = validated_data.pop('images', [])
         plantation = Plantation.objects.create(**validated_data)
 
         for coord in coordinates_data:
             PlantationCoordinates.objects.create(plantation=plantation, **coord)
 
-        for fruit in fruit_area_data:
-            PlantationFruitArea.objects.create(plantation=plantation, **fruit)
+        for fruit_area in fruit_areas_data:
+            PlantationFruitArea.objects.create(plantation=plantation, **fruit_area)
 
-        for image_url in images_data:
-            PlantationImage.objects.create(plantation=plantation, image=image_url)
+        for image in images_data:
+            PlantationImage.objects.create(plantation=plantation, image=image)
 
         return plantation
 
+    def update(self, instance, validated_data):
+        coordinates_data = validated_data.pop('coordinates', [])
+        fruit_areas_data = validated_data.pop('fruit_areas', [])
+        images_data = validated_data.pop('images', [])
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+
+        # Обновляем связанные данные
+        instance.coordinates.all().delete()
+        for coord in coordinates_data:
+            PlantationCoordinates.objects.create(plantation=instance, **coord)
+
+        instance.fruit_areas.all().delete()
+        for fruit_area in fruit_areas_data:
+            PlantationFruitArea.objects.create(plantation=instance, **fruit_area)
+
+        instance.images.all().delete()
+        for image in images_data:
+            PlantationImage.objects.create(plantation=instance, image=image)
+
+        return instance
