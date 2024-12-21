@@ -1,9 +1,6 @@
 from django.db import models
-from api.utils import LAND_TYPE, FARM_TYPE
-    
-from django.db import models
+from api.utils import LAND_TYPE, INVEST_TYPE
 from django.utils import timezone
-from api.utils import LAND_TYPE, FARM_TYPE
 
 class Plantation(models.Model):
     garden_established_year = models.IntegerField(verbose_name="Боғ барпо этилган йил", null=True, blank=True)
@@ -39,41 +36,43 @@ class Plantation(models.Model):
         Проверяет изменения данных и обновляет prev_data. 
         Очищает prev_data, если данные подтверждены (is_checked=True).
         """
+        # Очищаем prev_data, если данные проверены
         if self.is_checked and self.prev_data:
-            # Очищаем prev_data, если данные проверены
             self.clear_prev_data()
 
+        # Сбрасываем is_checked на False при любом изменении данных
         if not self.pk or not self.is_checked:
-            # Сбрасываем is_checked на False при любом изменении данных
             self.is_checked = False
 
-        # Если объект уже существует, проверяем изменения
+        # Проверяем изменения только для существующего объекта
         if self.pk:
-            original = Plantation.objects.get(pk=self.pk)
+            try:
+                original = Plantation.objects.get(pk=self.pk)
+            except Plantation.DoesNotExist:
+                original = None
+
             changes = {}
 
             # Проверяем изменения в каждом поле
-            for field in self._meta.get_fields():
-                if field.concrete and field.name not in ['is_checked', 'prev_data']:
-                    old_value = getattr(original, field.name)
-                    new_value = getattr(self, field.name)
+            if original:
+                for field in self._meta.get_fields():
+                    if field.concrete and field.name not in ['is_checked', 'prev_data']:
+                        old_value = getattr(original, field.name, None)
+                        new_value = getattr(self, field.name, None)
 
-                    # Преобразуем связанные объекты в ID для сохранения
-                    if field.name in ['district', 'farmer']:
-                        old_value = old_value.id if old_value else None
-                        new_value = new_value.id if new_value else None
+                        # Преобразуем связанные объекты в ID
+                        if field.name in ['district', 'farmer']:
+                            old_value = old_value.id if old_value else None
+                            new_value = new_value.id if new_value else None
 
-                    if old_value != new_value:
-                        changes[field.name] = {
-                            'old': old_value,
-                            'new': new_value
-                        }
+                        if old_value != new_value:
+                            changes[field.name] = {
+                                'old': old_value,
+                                'new': new_value
+                            }
 
-            # Сохраняем изменения в prev_data
-            if changes:
-                self.prev_data = changes
-            else:
-                self.prev_data = None  # Очищаем, если изменений нет
+            # Сохраняем изменения в prev_data, если они есть
+            self.prev_data = changes if changes else None
 
         super(Plantation, self).save(*args, **kwargs)
 
@@ -83,8 +82,10 @@ class Plantation(models.Model):
         """
         self.prev_data = None
 
+
     def __str__(self):
-        return f"Plantation {self.id} - {self.district.name}"
+        return f"Subsidy for Plantation {self.farmer.name} ({self.id})"
+
 
 
 class Farmer(models.Model):
@@ -95,18 +96,18 @@ class Farmer(models.Model):
     address = models.TextField(verbose_name="Яшаш манзили")
     inn = models.CharField(max_length=20, verbose_name="Ташкилот ИНН")
     established_year = models.IntegerField(verbose_name="Ташкил этилган йил")
+    email = models.EmailField(blank=True)
 
     def __str__(self):
         return f"{self.name}"
 
 class Investment(models.Model):
     plantation = models.OneToOneField(Plantation, on_delete=models.CASCADE, related_name="investment")
-    farm_type = models.CharField(max_length=10, choices=FARM_TYPE, verbose_name="Маҳаллий ёки интенсив")
-    investment_foreign = models.FloatField(default=0, verbose_name="Хорижий инвестиция")
-    investment_local = models.FloatField(default=0, verbose_name="Маҳаллий инвестиция")
+    invest_type = models.CharField(max_length=10, choices=INVEST_TYPE, verbose_name="Маҳаллий ёки хорижий")
+    investment_amount = models.FloatField(default=0, verbose_name="Хорижий инвестиция")
 
     def __str__(self):
-        return f"Investment for Plantation {self.plantation.id}"
+        return f"Investment for Plantation {self.plantation.id} - {self.investment_amount}"
 
 class Reservoir(models.Model):
     plantation = models.OneToOneField(Plantation, on_delete=models.CASCADE, related_name="reservoir")
@@ -138,14 +139,14 @@ class Subsidy(models.Model):
     efficiency = models.BooleanField(verbose_name="Самарадорлиги")
 
     def __str__(self):
-        return f"Subsidy for {self.plantation.name} ({self.year})"
+        return f"Subsidy for {self.plantation.farmer.name} ({self.year})"
 
 class PlantationImage(models.Model):
     plantation = models.ForeignKey(Plantation, related_name="images", on_delete=models.CASCADE)
     image = models.ImageField(upload_to="plantation_images/", verbose_name="Расм")
 
     def __str__(self):
-        return f"Image for Plantation {self.plantation.name}"
+        return f"Image for Plantation {self.plantation.farmer.name}"
 
 
 class Fruits(models.Model):

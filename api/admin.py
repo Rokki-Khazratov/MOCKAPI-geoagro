@@ -61,8 +61,8 @@ class FarmerAdmin(admin.ModelAdmin):
 
 @admin.register(Investment)
 class InvestmentAdmin(admin.ModelAdmin):
-    list_display = ('plantation', 'farm_type', 'investment_foreign', 'investment_local')
-    list_filter = ('farm_type',)
+    list_display = ('plantation', 'invest_type', 'investment_amount')
+    list_filter = ('invest_type',)
     search_fields = ('plantation__name',)
 
 

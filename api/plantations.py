@@ -69,12 +69,15 @@ class PlantationDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_district(self, obj):
+        """Retrieve district and region details."""
+        district = obj.district
         return {
-            'name': obj.district.name,
-            'region': obj.district.region.name
-        }
+            'name': district.name,
+            'region': district.region.name
+        } if district else None
 
     def get_farmer(self, obj):
+        """Retrieve farmer details."""
         farmer = obj.farmer
         return {
             'name': farmer.name,
@@ -87,35 +90,32 @@ class PlantationDetailSerializer(serializers.ModelSerializer):
         } if farmer else None
 
     def get_investment(self, obj):
+        """Retrieve investment details."""
         investment = getattr(obj, 'investment', None)
-        if not investment:
-            return None
         return {
-            'farm_type': investment.farm_type,
-            'investment_foreign': investment.investment_foreign,
-            'investment_local': investment.investment_local
-        }
+            'invest_type': investment.invest_type,
+            'investment_amount': investment.investment_amount,
+        } if investment else None
 
     def get_reservoir(self, obj):
+        """Retrieve reservoir details."""
         reservoir = getattr(obj, 'reservoir', None)
-        if not reservoir:
-            return None
         return {
             'reservoir_type': reservoir.reservoir_type,
             'reservoir_volume': reservoir.reservoir_volume
-        }
+        } if reservoir else None
 
     def get_trellis(self, obj):
+        """Retrieve trellis details."""
         trellis = getattr(obj, 'trellis', None)
-        if not trellis:
-            return None
         return {
             'trellis_installed_area': trellis.trellis_installed_area,
             'trellis_type': trellis.trellis_type,
             'trellis_count': trellis.trellis_count
-        }
+        } if trellis else None
 
     def get_subsidies(self, obj):
+        """Retrieve subsidies details."""
         return [
             {
                 'year': subsidy.year,
@@ -126,6 +126,7 @@ class PlantationDetailSerializer(serializers.ModelSerializer):
             }
             for subsidy in obj.subsidies.all()
         ]
+
 
 
 
