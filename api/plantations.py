@@ -20,6 +20,15 @@ class TrellisSerializer(serializers.ModelSerializer):
 
 
 
+# Сериализатор для Rootstock
+class RootstockSerializer(serializers.ModelSerializer):
+    fruit_name = serializers.CharField(source='fruit.name', read_only=True)
+
+    class Meta:
+        model = Rootstock
+        fields = ['id', 'name', 'fruit', 'fruit_name']
+
+
 # Сериализатор для Reservoir
 class ReservoirSerializer(serializers.ModelSerializer):
     reservoir_volume_in_cubic_meters = serializers.SerializerMethodField()
@@ -84,10 +93,18 @@ class PlantationListSerializer(serializers.ModelSerializer):
 # Сериализатор для отображения на карте
 class MapPlantationSerializer(serializers.ModelSerializer):
     coordinates = PlantationCoordinatesSerializer(many=True, read_only=True)
+    name = serializers.SerializerMethodField()
 
     class Meta:
         model = Plantation
-        fields = ['id', 'garden_established_year', 'coordinates', 'is_fertile']
+        fields = ['id', 'name', 'coordinates','is_fertile']
+
+    def get_name(self, obj):
+        """
+        Возвращает имя фермера, если оно существует.
+        """
+        return obj.farmer.name if obj.farmer else None
+
 
 
 #! LOGIC
@@ -213,3 +230,5 @@ class PlantationCreateSerializer(serializers.ModelSerializer):
             Trellis.objects.create(plantation=plantation, **trellis_data)
 
         return plantation
+
+

@@ -59,15 +59,31 @@ class PlantationAdmin(admin.ModelAdmin):
     list_display = ('id', 'district', 'farmer', 'garden_established_year', 'total_area', 'land_type', 'is_fertile', 'is_checked')
     search_fields = ('district__name', 'land_type', 'farmer__name')
     list_filter = ('district', 'land_type', 'is_fertile', 'is_checked', 'farmer')
-    autocomplete_fields = ['farmer']  # Добавляем автодополнение для выбора фермера
+    autocomplete_fields = ['farmer']
     inlines = [PlantationCoordinatesInline, PlantationImageInline, PlantationFruitAreaInline, InvestmentInline, ReservoirInline, TrellisInline]
-
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         if request.user.is_superuser:
             return qs  # Суперпользователь видит все
         return qs.filter(district__users=request.user)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """
+        Настраиваем отображение ForeignKey полей в зависимости от прав пользователя.
+        """
+        if db_field.name == "district":
+            if not request.user.is_superuser:
+                # Показываем только те районы, которые привязаны к пользователю
+                kwargs["queryset"] = District.objects.filter(users=request.user)
+        if db_field.name == "farmer":
+            if not request.user.is_superuser:
+                # Показываем только фермеров, которые относятся к районам пользователя
+                user_district = getattr(request.user, 'district', None)
+                if user_district:
+                    kwargs["queryset"] = Farmer.objects.filter(plantations__district=user_district).distinct()
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
 
 
 @admin.register(Farmer)

@@ -43,45 +43,27 @@ class Plantation(models.Model):
         """
         Validate the model fields before saving.
         """
-        # Check for negative values in area fields
-        if self.total_area < 0:
-            raise ValidationError({'total_area': 'Общая площадь не может быть отрицательной.'})
-        if self.irrigation_area < 0:
-            raise ValidationError({'irrigation_area': 'Площадь ирригации не может быть отрицательной.'})
-        if self.not_usable_area < 0:
-            raise ValidationError({'not_usable_area': 'Непригодная площадь не может быть отрицательной.'})
+        # Проверка на отрицательные значения для всех площадей:
+        if self.total_area < 0 or self.irrigation_area < 0 or self.not_usable_area < 0:
+            raise ValidationError('Все значения площадей должны быть положительными.')
 
-        # Check irrigation_area does not exceed total_area
+        # irrigation_area не должна превышать total_area:
         if self.irrigation_area > self.total_area:
             raise ValidationError({'irrigation_area': 'Площадь ирригации не может превышать общую площадь.'})
 
-        # Validate fertility_score
-        if self.fertility_score is not None:
-            if self.fertility_score < 1 or self.fertility_score > 100:
-                raise ValidationError({'fertility_score': 'Балли унумдорлиги должна быть в диапазоне от 1 до 100.'})
-
-        # Ensure total_area covers all sub-areas
-        total_used_area = self.irrigation_area + self.not_usable_area + sum(
-            fruit_area.area for fruit_area in self.fruit_areas.all()
-        )
-        if total_used_area > self.total_area:
-            raise ValidationError('Сумма всех под-площадей превышает общую площадь.')
-
+        # Проверяем, если у объекта уже есть PK
+        if self.pk:
+            # Проверяем сумму всех под-площадей
+            total_used_area = self.irrigation_area + self.not_usable_area + sum(
+                fruit_area.area for fruit_area in self.fruit_areas.all()
+            )
+            if total_used_area > self.total_area:
+                raise ValidationError('Сумма всех под-площадей не должна превышать общую площадь.')
 
         # Validate fertility_score
         if self.fertility_score is not None and (self.fertility_score < 1 or self.fertility_score > 100):
             raise ValidationError({'fertility_score': 'Балли унумдорлиги должна быть в диапазоне от 1 до 100.'})
 
-        # Validate not_usable_area
-        if self.not_usable_area < 0:
-            raise ValidationError({'not_usable_area': 'Непригодная площадь не может быть отрицательной.'})
-
-        # Ensure total_area covers all sub-areas
-        total_used_area = self.irrigation_area + self.not_usable_area + sum(
-            fruit_area.area for fruit_area in self.fruit_areas.all()
-        )
-        if total_used_area > self.total_area:
-            raise ValidationError("Сумма всех площадей превышает общую площадь.")
 
     @property
     def empty_area(self):
@@ -97,8 +79,15 @@ class Plantation(models.Model):
         """
         Validate and save the plantation data.
         """
-        self.full_clean()  # Ensure model validation before saving
-        super().save(*args, **kwargs)
+        super().save(*args, **kwargs)  # Сначала сохраняем объект, чтобы получить PK
+
+        # Теперь объект имеет PK, и мы можем выполнить валидацию
+        total_used_area = self.irrigation_area + self.not_usable_area + sum(
+            fruit_area.area for fruit_area in self.fruit_areas.all()
+        )
+        if total_used_area > self.total_area:
+            raise ValidationError('Сумма всех под-площадей превышает общую площадь.')
+
 
     def clear_prev_data(self):
         """
@@ -187,6 +176,19 @@ class FruitVariety(models.Model):
         return f"{self.fruit.name} - {self.name}"
 
 
+class Rootstock(models.Model):
+    fruit = models.ForeignKey(
+        Fruits, 
+        on_delete=models.CASCADE, 
+        related_name="rootstocks", 
+        verbose_name="Мева тури"
+    )
+    name = models.CharField(max_length=100, verbose_name="Пайвантак номи")
+
+    def __str__(self):
+        return f"{self.name} ({self.fruit.name})"
+
+
 class PlantationFruitArea(models.Model):
     plantation = models.ForeignKey(
         Plantation, 
@@ -206,17 +208,19 @@ class PlantationFruitArea(models.Model):
         blank=True,
         verbose_name="Нави"
     )
-    rootstock = models.CharField(
-        max_length=100, 
-        verbose_name="Пайвантак номи", 
-        null=True, 
-        blank=True
+    rootstock = models.ForeignKey(
+        Rootstock,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Пайвантак номи"
     )
     planted_year = models.IntegerField(verbose_name="Экилган йили")
     area = models.FloatField(verbose_name="Экин ер майдони гектар")
 
     def __str__(self):
         return f"Fruit area in Plantation {self.plantation.id} - {self.fruit.name}"
+
 
 
 

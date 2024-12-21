@@ -57,3 +57,13 @@ class FarmerListCreateAPIView(generics.ListCreateAPIView):
 class FarmerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Farmer.objects.all()
     serializer_class = FarmerSerializer
+
+
+# List and Create API
+class RootstockListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Rootstock.objects.all()
+    serializer_class = RootstockSerializer
+
+class RootstockRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Rootstock.objects.all()
+    serializer_class = RootstockSerializer
