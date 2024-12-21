@@ -3,6 +3,49 @@ from core.settings import BASE_URL
 from .models import *
 from .plantation_models import *
 
+# Сериализаторы для Plantation
+
+# Сериализатор для Subsidy
+class SubsidySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subsidy
+        fields = ['id', 'plantation', 'year', 'contract_number', 'direction', 'amount', 'efficiency']
+
+
+# Сериализатор для Trellis
+class TrellisSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Trellis
+        fields = ['id', 'trellis_type', 'trellis_installed_area', 'trellis_count']
+
+
+
+# Сериализатор для Reservoir
+class ReservoirSerializer(serializers.ModelSerializer):
+    reservoir_volume_in_cubic_meters = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Reservoir
+        fields = ['id', 'reservoir_type', 'reservoir_volume', 'reservoir_volume_in_cubic_meters']
+
+    def get_reservoir_volume_in_cubic_meters(self, obj):
+        return f"{obj.reservoir_volume} м³" if obj.reservoir_volume else None
+
+
+
+
+# Сериализатор для Investment
+class InvestmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Investment
+        fields = ['id', 'plantation', 'farm_type', 'investment_foreign', 'investment_local']
+
+
+# Сериализатор для Farmer
+class FarmerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Farmer
+        fields = ['id', 'name', 'founder_name', 'director_name', 'phone_number', 'address', 'inn', 'established_year']
 
 # Сериализатор для изображений
 class PlantationImageSerializer(serializers.ModelSerializer):
@@ -47,6 +90,8 @@ class MapPlantationSerializer(serializers.ModelSerializer):
         fields = ['id', 'garden_established_year', 'coordinates', 'is_fertile']
 
 
+#! LOGIC
+
 # Детализированный сериализатор плантации
 class PlantationDetailSerializer(serializers.ModelSerializer):
     district = serializers.SerializerMethodField()
@@ -58,6 +103,7 @@ class PlantationDetailSerializer(serializers.ModelSerializer):
     images = PlantationImageSerializer(many=True, read_only=True)
     coordinates = PlantationCoordinatesSerializer(many=True, read_only=True)
     subsidies = serializers.SerializerMethodField()
+    empty_area = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Plantation
@@ -65,19 +111,14 @@ class PlantationDetailSerializer(serializers.ModelSerializer):
             'id', 'garden_established_year', 'total_area', 'irrigation_area', 'fertility_score',
             'land_type', 'is_fertile', 'fenced', 'irrigation_systems_count', 'pump_station_count',
             'reservoir_count', 'district', 'farmer', 'investment', 'reservoir', 'trellis',
-            'fruit_areas', 'images', 'coordinates', 'subsidies',
+            'fruit_areas', 'images', 'coordinates', 'subsidies', 'not_usable_area', 'empty_area',
         ]
 
     def get_district(self, obj):
-        """Retrieve district and region details."""
         district = obj.district
-        return {
-            'name': district.name,
-            'region': district.region.name
-        } if district else None
+        return {'name': district.name, 'region': district.region.name} if district else None
 
     def get_farmer(self, obj):
-        """Retrieve farmer details."""
         farmer = obj.farmer
         return {
             'name': farmer.name,
@@ -86,19 +127,18 @@ class PlantationDetailSerializer(serializers.ModelSerializer):
             'phone_number': farmer.phone_number,
             'address': farmer.address,
             'inn': farmer.inn,
+            'email': farmer.email,
             'established_year': farmer.established_year
         } if farmer else None
 
     def get_investment(self, obj):
-        """Retrieve investment details."""
         investment = getattr(obj, 'investment', None)
         return {
             'invest_type': investment.invest_type,
-            'investment_amount': investment.investment_amount,
+            'investment_amount': investment.investment_amount
         } if investment else None
 
     def get_reservoir(self, obj):
-        """Retrieve reservoir details."""
         reservoir = getattr(obj, 'reservoir', None)
         return {
             'reservoir_type': reservoir.reservoir_type,
@@ -106,7 +146,6 @@ class PlantationDetailSerializer(serializers.ModelSerializer):
         } if reservoir else None
 
     def get_trellis(self, obj):
-        """Retrieve trellis details."""
         trellis = getattr(obj, 'trellis', None)
         return {
             'trellis_installed_area': trellis.trellis_installed_area,
@@ -115,7 +154,6 @@ class PlantationDetailSerializer(serializers.ModelSerializer):
         } if trellis else None
 
     def get_subsidies(self, obj):
-        """Retrieve subsidies details."""
         return [
             {
                 'year': subsidy.year,
@@ -130,24 +168,30 @@ class PlantationDetailSerializer(serializers.ModelSerializer):
 
 
 
-# Сериализатор для создания/обновления плантации
 class PlantationCreateSerializer(serializers.ModelSerializer):
     coordinates = PlantationCoordinatesSerializer(many=True)
     fruit_areas = PlantationFruitAreaSerializer(many=True)
     images = serializers.ListField(child=serializers.ImageField())
+    investment = serializers.JSONField()
+    reservoir = serializers.JSONField()
+    trellis = serializers.JSONField()
 
     class Meta:
         model = Plantation
         fields = [
-            'garden_established_year', 'district', 'total_area', 'irrigation_area', 'fertility_score',
+            'garden_established_year', 'district', 'farmer', 'total_area', 'irrigation_area', 'fertility_score',
             'land_type', 'is_fertile', 'fenced', 'irrigation_systems_count', 'pump_station_count',
-            'reservoir_count', 'coordinates', 'fruit_areas', 'images',
+            'reservoir_count', 'coordinates', 'fruit_areas', 'images', 'investment', 'reservoir', 'trellis'
         ]
 
     def create(self, validated_data):
         coordinates_data = validated_data.pop('coordinates', [])
         fruit_areas_data = validated_data.pop('fruit_areas', [])
         images_data = validated_data.pop('images', [])
+        investment_data = validated_data.pop('investment', {})
+        reservoir_data = validated_data.pop('reservoir', {})
+        trellis_data = validated_data.pop('trellis', {})
+
         plantation = Plantation.objects.create(**validated_data)
 
         for coord in coordinates_data:
@@ -159,29 +203,13 @@ class PlantationCreateSerializer(serializers.ModelSerializer):
         for image in images_data:
             PlantationImage.objects.create(plantation=plantation, image=image)
 
+        if investment_data:
+            Investment.objects.create(plantation=plantation, **investment_data)
+
+        if reservoir_data:
+            Reservoir.objects.create(plantation=plantation, **reservoir_data)
+
+        if trellis_data:
+            Trellis.objects.create(plantation=plantation, **trellis_data)
+
         return plantation
-
-    def update(self, instance, validated_data):
-        coordinates_data = validated_data.pop('coordinates', [])
-        fruit_areas_data = validated_data.pop('fruit_areas', [])
-        images_data = validated_data.pop('images', [])
-
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        instance.save()
-
-        # Обновляем связанные данные
-        instance.coordinates.all().delete()
-        for coord in coordinates_data:
-            PlantationCoordinates.objects.create(plantation=instance, **coord)
-
-        instance.fruit_areas.all().delete()
-        for fruit_area in fruit_areas_data:
-            PlantationFruitArea.objects.create(plantation=instance, **fruit_area)
-
-        instance.images.all().delete()
-        for image in images_data:
-            PlantationImage.objects.create(plantation=instance, image=image)
-
-        return instance

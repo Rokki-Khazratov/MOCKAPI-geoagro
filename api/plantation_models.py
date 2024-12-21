@@ -1,6 +1,8 @@
 from django.db import models
-from api.utils import LAND_TYPE, INVEST_TYPE
+from api.utils import LAND_TYPE, INVEST_TYPE, RESERVOIR_TYPE, TRELLIS_TYPE
 from django.utils import timezone
+
+from django.core.exceptions import ValidationError
 
 class Plantation(models.Model):
     garden_established_year = models.IntegerField(verbose_name="Боғ барпо этилган йил", null=True, blank=True)
@@ -15,9 +17,15 @@ class Plantation(models.Model):
     )
     total_area = models.FloatField(verbose_name="Жами ер майдони гектар")
     irrigation_area = models.FloatField(default=0, verbose_name="Томчилатиб суғориш майдони")
-    fertility_score = models.FloatField(null=True, blank=True, verbose_name="Унумдорлиги банитет балли")  # 0 - 100
+    fertility_score = models.FloatField(
+        null=True, 
+        blank=True, 
+        verbose_name="Унумдорлиги банитет балли",
+        help_text="Балли унумдорлиги (1-100)"
+    )
     land_type = models.CharField(max_length=10, choices=LAND_TYPE, verbose_name="Жойлашган тури")
-
+    not_usable_area = models.FloatField(default=0, verbose_name="Непригодная площадь (га)")
+    
     irrigation_systems_count = models.IntegerField(default=0, verbose_name="Қудуқлар сони")
     pump_station_count = models.IntegerField(default=0, verbose_name="Насос станцияси сони")
     reservoir_count = models.IntegerField(default=0, verbose_name="Ҳовузлар сони")
@@ -31,60 +39,76 @@ class Plantation(models.Model):
 
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
 
+    def clean(self):
+        """
+        Validate the model fields before saving.
+        """
+        # Check for negative values in area fields
+        if self.total_area < 0:
+            raise ValidationError({'total_area': 'Общая площадь не может быть отрицательной.'})
+        if self.irrigation_area < 0:
+            raise ValidationError({'irrigation_area': 'Площадь ирригации не может быть отрицательной.'})
+        if self.not_usable_area < 0:
+            raise ValidationError({'not_usable_area': 'Непригодная площадь не может быть отрицательной.'})
+
+        # Check irrigation_area does not exceed total_area
+        if self.irrigation_area > self.total_area:
+            raise ValidationError({'irrigation_area': 'Площадь ирригации не может превышать общую площадь.'})
+
+        # Validate fertility_score
+        if self.fertility_score is not None:
+            if self.fertility_score < 1 or self.fertility_score > 100:
+                raise ValidationError({'fertility_score': 'Балли унумдорлиги должна быть в диапазоне от 1 до 100.'})
+
+        # Ensure total_area covers all sub-areas
+        total_used_area = self.irrigation_area + self.not_usable_area + sum(
+            fruit_area.area for fruit_area in self.fruit_areas.all()
+        )
+        if total_used_area > self.total_area:
+            raise ValidationError('Сумма всех под-площадей превышает общую площадь.')
+
+
+        # Validate fertility_score
+        if self.fertility_score is not None and (self.fertility_score < 1 or self.fertility_score > 100):
+            raise ValidationError({'fertility_score': 'Балли унумдорлиги должна быть в диапазоне от 1 до 100.'})
+
+        # Validate not_usable_area
+        if self.not_usable_area < 0:
+            raise ValidationError({'not_usable_area': 'Непригодная площадь не может быть отрицательной.'})
+
+        # Ensure total_area covers all sub-areas
+        total_used_area = self.irrigation_area + self.not_usable_area + sum(
+            fruit_area.area for fruit_area in self.fruit_areas.all()
+        )
+        if total_used_area > self.total_area:
+            raise ValidationError("Сумма всех площадей превышает общую площадь.")
+
+    @property
+    def empty_area(self):
+        """
+        Calculate empty area: total_area - (irrigation_area + areas of all fruit areas + not_usable_area).
+        """
+        used_area = self.irrigation_area + self.not_usable_area + sum(
+            fruit_area.area for fruit_area in self.fruit_areas.all()
+        )
+        return self.total_area - used_area
+
     def save(self, *args, **kwargs):
         """
-        Проверяет изменения данных и обновляет prev_data. 
-        Очищает prev_data, если данные подтверждены (is_checked=True).
+        Validate and save the plantation data.
         """
-        # Очищаем prev_data, если данные проверены
-        if self.is_checked and self.prev_data:
-            self.clear_prev_data()
-
-        # Сбрасываем is_checked на False при любом изменении данных
-        if not self.pk or not self.is_checked:
-            self.is_checked = False
-
-        # Проверяем изменения только для существующего объекта
-        if self.pk:
-            try:
-                original = Plantation.objects.get(pk=self.pk)
-            except Plantation.DoesNotExist:
-                original = None
-
-            changes = {}
-
-            # Проверяем изменения в каждом поле
-            if original:
-                for field in self._meta.get_fields():
-                    if field.concrete and field.name not in ['is_checked', 'prev_data']:
-                        old_value = getattr(original, field.name, None)
-                        new_value = getattr(self, field.name, None)
-
-                        # Преобразуем связанные объекты в ID
-                        if field.name in ['district', 'farmer']:
-                            old_value = old_value.id if old_value else None
-                            new_value = new_value.id if new_value else None
-
-                        if old_value != new_value:
-                            changes[field.name] = {
-                                'old': old_value,
-                                'new': new_value
-                            }
-
-            # Сохраняем изменения в prev_data, если они есть
-            self.prev_data = changes if changes else None
-
-        super(Plantation, self).save(*args, **kwargs)
+        self.full_clean()  # Ensure model validation before saving
+        super().save(*args, **kwargs)
 
     def clear_prev_data(self):
         """
-        Очищает данные из prev_data, если is_checked=True.
+        Clear previous data.
         """
         self.prev_data = None
 
-
     def __str__(self):
-        return f"Subsidy for Plantation {self.farmer.name} ({self.id})"
+        return f"Plantation {self.id} ({self.district.name})"
+
 
 
 
@@ -110,18 +134,17 @@ class Investment(models.Model):
         return f"Investment for Plantation {self.plantation.id} - {self.investment_amount}"
 
 class Reservoir(models.Model):
-    plantation = models.OneToOneField(Plantation, on_delete=models.CASCADE, related_name="reservoir")
-    reservoir_type = models.CharField(max_length=50, verbose_name="Ҳовуз тури", null=True, blank=True)
-    reservoir_volume = models.FloatField(null=True, blank=True, verbose_name="Ҳовуз ҳажми")
+    plantation = models.OneToOneField('Plantation', on_delete=models.CASCADE, related_name="reservoir")
+    reservoir_type = models.CharField(max_length=50, choices=RESERVOIR_TYPE, verbose_name="Ҳовуз тури", null=True, blank=True)
+    reservoir_volume = models.FloatField(null=True, blank=True, verbose_name="Ҳовуз ҳажми (м³)")  # Stored in cubic meters
 
     def __str__(self):
         return f"Reservoir for Plantation {self.plantation.id}"
 
-
 class Trellis(models.Model):
-    plantation = models.OneToOneField(Plantation, on_delete=models.CASCADE, related_name="trellis")
+    plantation = models.OneToOneField('Plantation', on_delete=models.CASCADE, related_name="trellis")
     trellis_installed_area = models.FloatField(default=0, verbose_name="Шпаллар ўрнатилган майдон")
-    trellis_type = models.CharField(max_length=50, verbose_name="Шпаллер тури", null=True, blank=True)
+    trellis_type = models.CharField(max_length=50, choices=TRELLIS_TYPE, verbose_name="Шпаллер тури", null=True, blank=True)
     trellis_count = models.IntegerField(default=0, verbose_name="Шпаллар сони")
 
     def __str__(self):

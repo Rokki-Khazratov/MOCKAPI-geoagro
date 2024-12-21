@@ -36,13 +36,32 @@ class PlantationFruitAreaAdmin(admin.ModelAdmin):
     list_display = ('plantation', 'fruit', 'planted_year', 'area')
 
 
+# Inline admin для Investment
+class InvestmentInline(admin.StackedInline):
+    model = Investment
+    extra = 0
+
+
+# Inline admin для Reservoir
+class ReservoirInline(admin.StackedInline):
+    model = Reservoir
+    extra = 0
+
+
+# Inline admin для Trellis
+class TrellisInline(admin.StackedInline):
+    model = Trellis
+    extra = 0
+
+
 @admin.register(Plantation)
 class PlantationAdmin(admin.ModelAdmin):
     list_display = ('id', 'district', 'farmer', 'garden_established_year', 'total_area', 'land_type', 'is_fertile', 'is_checked')
     search_fields = ('district__name', 'land_type', 'farmer__name')
     list_filter = ('district', 'land_type', 'is_fertile', 'is_checked', 'farmer')
     autocomplete_fields = ['farmer']  # Добавляем автодополнение для выбора фермера
-    inlines = [PlantationCoordinatesInline, PlantationImageInline, PlantationFruitAreaInline]
+    inlines = [PlantationCoordinatesInline, PlantationImageInline, PlantationFruitAreaInline, InvestmentInline, ReservoirInline, TrellisInline]
+
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -65,18 +84,18 @@ class InvestmentAdmin(admin.ModelAdmin):
     list_filter = ('invest_type',)
     search_fields = ('plantation__name',)
 
-
 @admin.register(Reservoir)
 class ReservoirAdmin(admin.ModelAdmin):
     list_display = ('plantation', 'reservoir_type', 'reservoir_volume')
     list_filter = ('reservoir_type',)
-    search_fields = ('plantation__name',)
-
+    search_fields = ('plantation__district__name',)
 
 @admin.register(Trellis)
 class TrellisAdmin(admin.ModelAdmin):
     list_display = ('plantation', 'trellis_installed_area', 'trellis_type', 'trellis_count')
-    search_fields = ('plantation__name', 'trellis_type')
+    list_filter = ('trellis_type',)
+    search_fields = ('plantation__district__name', 'trellis_type')
+
 
 
 @admin.register(Subsidy)

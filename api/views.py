@@ -29,122 +29,122 @@ from .plantations import *
 
 
 
-# class UserInfoAPIView(APIView):
+class UserInfoAPIView(APIView):
 
-#     def post(self, request, *args, **kwargs):
-#         token = request.data.get('access_token', None)
+    def post(self, request, *args, **kwargs):
+        token = request.data.get('access_token', None)
 
-#         if not token:
-#             raise AuthenticationFailed("Access token is missing in the request body")
+        if not token:
+            raise AuthenticationFailed("Access token is missing in the request body")
 
-#         try:
-#             jwt_authentication = JWTAuthentication()
-#             request.META['HTTP_AUTHORIZATION'] = f'Bearer {token}'
-#             user, _ = jwt_authentication.authenticate(request)
-#             user_data = UserInfoSerializer(user).data
-#             return Response(user_data)
+        try:
+            jwt_authentication = JWTAuthentication()
+            request.META['HTTP_AUTHORIZATION'] = f'Bearer {token}'
+            user, _ = jwt_authentication.authenticate(request)
+            user_data = UserInfoSerializer(user).data
+            return Response(user_data)
 
-#         except AuthenticationFailed:
-#             raise AuthenticationFailed("Invalid token or token has expired")
-
-
-
-
-
-
-# @api_view(['POST'])
-# def create_user(request):
-#     if request.method == 'POST':
-#         serializer = CustomUserCreateSerializer(data=request.data)
-#         if serializer.is_valid():
-#             user = serializer.save()  # Сохраняем пользователя
-#             return Response({
-#                 'id': user.id,
-#                 'username': user.username,
-#                 'first_name': user.first_name,
-#                 'last_name': user.last_name,
-#                 'phone_number': user.phone_number,
-#                 'districts': [district.name for district in user.districts.all()],
-#             }, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except AuthenticationFailed:
+            raise AuthenticationFailed("Invalid token or token has expired")
 
 
 
 
 
 
-# class CustomTokenRefreshView(TokenRefreshView):
-#     def post(self, request, *args, **kwargs):
-#         refresh_token = request.data.get('refresh')
-#         if not refresh_token:
-#             return Response({"detail": "Refresh token is required"}, status=400)
-
-#         try:
-#             # Validate and get the refresh token
-#             refresh = RefreshToken(refresh_token)
-#             access_token = str(refresh.access_token)
-#             refresh_token = str(refresh)
-
-#             return Response({
-#                 'access': access_token,
-#                 'refresh': refresh_token,
-#             })
-#         except Exception as e:
-#             return Response({"detail": f"Error: {str(e)}"}, status=400)
+@api_view(['POST'])
+def create_user(request):
+    if request.method == 'POST':
+        serializer = CustomUserCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()  # Сохраняем пользователя
+            return Response({
+                'id': user.id,
+                'username': user.username,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'phone_number': user.phone_number,
+                'districts': [district.name for district in user.districts.all()],
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
 
-# @api_view(['POST'])
-# def create_district(request):
-#     if request.method == 'POST':
-#         # Проверяем, что region передан в запросе
-#         region_id = request.data.get('region', None)
-#         if not region_id:
-#             return Response({"error": "Region is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CustomTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.data.get('refresh')
+        if not refresh_token:
+            return Response({"detail": "Refresh token is required"}, status=400)
+
+        try:
+            # Validate and get the refresh token
+            refresh = RefreshToken(refresh_token)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+
+            return Response({
+                'access': access_token,
+                'refresh': refresh_token,
+            })
+        except Exception as e:
+            return Response({"detail": f"Error: {str(e)}"}, status=400)
+
+
+
+
+@api_view(['POST'])
+def create_district(request):
+    if request.method == 'POST':
+        # Проверяем, что region передан в запросе
+        region_id = request.data.get('region', None)
+        if not region_id:
+            return Response({"error": "Region is required"}, status=status.HTTP_400_BAD_REQUEST)
         
-#         try:
-#             region = Region.objects.get(id=region_id)  # Получаем регион по ID
-#         except Region.DoesNotExist:
-#             return Response({"error": "Region not found"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            region = Region.objects.get(id=region_id)  # Получаем регион по ID
+        except Region.DoesNotExist:
+            return Response({"error": "Region not found"}, status=status.HTTP_400_BAD_REQUEST)
 
-#         # Создаем новый округ с выбранным регионом
-#         request.data['region'] = region.id  # Устанавливаем ID региона в данные
-#         serializer = DistrictSerializer(data=request.data)
+        # Создаем новый округ с выбранным регионом
+        request.data['region'] = region.id  # Устанавливаем ID региона в данные
+        serializer = DistrictSerializer(data=request.data)
 
-#         if serializer.is_valid():
-#             district = serializer.save()  # Сохраняем новый округ
-#             return Response(DistrictSerializer(district).data, status=status.HTTP_201_CREATED)
+        if serializer.is_valid():
+            district = serializer.save()  # Сохраняем новый округ
+            return Response(DistrictSerializer(district).data, status=status.HTTP_201_CREATED)
 
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# @api_view(['GET'])
-# def get_districts(request):
-#     if request.method == 'GET':
-#         districts = District.objects.all()
-#         serializer = DistrictSerializer(districts, many=True)
-#         return Response(serializer.data)
+@api_view(['GET'])
+def get_districts(request):
+    if request.method == 'GET':
+        districts = District.objects.all()
+        serializer = DistrictSerializer(districts, many=True)
+        return Response(serializer.data)
 
-# @api_view(['GET'])
-# def get_regions(request):
-#     if request.method == 'GET':
-#         regions = Region.objects.all()
-#         serializer = RegionSerializer(regions, many=True)
-#         return Response(serializer.data)
+@api_view(['GET'])
+def get_regions(request):
+    if request.method == 'GET':
+        regions = Region.objects.all()
+        serializer = RegionSerializer(regions, many=True)
+        return Response(serializer.data)
 
-# @api_view(['GET'])
-# def get_fruits(request):
-#     if request.method == 'GET':
-#         fruit_id = request.query_params.get('fruit', None)
+@api_view(['GET'])
+def get_fruits(request):
+    if request.method == 'GET':
+        fruit_id = request.query_params.get('fruit', None)
 
-#         if fruit_id:
-#             fruits = FruitVariety.objects.filter(fruit__id=fruit_id)
-#         else:
-#             fruits = FruitVariety.objects.all()
+        if fruit_id:
+            fruits = FruitVariety.objects.filter(fruit__id=fruit_id)
+        else:
+            fruits = FruitVariety.objects.all()
 
-#         serializer = FruitVarietySerializer(fruits, many=True)
+        serializer = FruitVarietySerializer(fruits, many=True)
         
-#         return Response(serializer.data)
+        return Response(serializer.data)
 
 
 
@@ -152,74 +152,74 @@ from .plantations import *
 
 
 
-# class CustomTokenObtainPairView(TokenObtainPairView):
-#     serializer_class = CustomTokenObtainPairSerializer
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
-# class UserListAPIView(generics.ListAPIView):
-#     queryset = CustomUser.objects.all()
-#     serializer_class = UserSerializer
-#     # permission_classes = [permissions.IsAuthenticated]  # Только аутентифицированные пользователи могут видеть список
-#     # def get_queryset(self):
-#     #     """
-#     #     Ограничиваем доступ к пользователям в зависимости от прав (например, для суперпользователей).
-#     #     """
-#     #     queryset = super().get_queryset()
-#     #     if self.request.user.is_superuser:
-#     #         return queryset
-#     #     return queryset.filter(id=self.request.user.id)  # Только текущий пользователь видит себя
+class UserListAPIView(generics.ListAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    # permission_classes = [permissions.IsAuthenticated]  # Только аутентифицированные пользователи могут видеть список
+    # def get_queryset(self):
+    #     """
+    #     Ограничиваем доступ к пользователям в зависимости от прав (например, для суперпользователей).
+    #     """
+    #     queryset = super().get_queryset()
+    #     if self.request.user.is_superuser:
+    #         return queryset
+    #     return queryset.filter(id=self.request.user.id)  # Только текущий пользователь видит себя
 
-# class UserDetailAPIView(generics.RetrieveAPIView):
-#     queryset = CustomUser.objects.all()
-#     serializer_class = UserSerializer
-#     # permission_classes = [permissions.IsAuthenticated]
-#     # def get_object(self):
-#     #     """
-#     #     Возвращаем пользователя по ID, если это суперпользователь или сам текущий пользователь.
-#     #     """
-#     #     obj = super().get_object()
-#     #     if not self.request.user.is_superuser and obj != self.request.user:
-#     #         raise PermissionDenied("You do not have permission to view this user.")
-#     #     return obj
-
-
+class UserDetailAPIView(generics.RetrieveAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    # permission_classes = [permissions.IsAuthenticated]
+    # def get_object(self):
+    #     """
+    #     Возвращаем пользователя по ID, если это суперпользователь или сам текущий пользователь.
+    #     """
+    #     obj = super().get_object()
+    #     if not self.request.user.is_superuser and obj != self.request.user:
+    #         raise PermissionDenied("You do not have permission to view this user.")
+    #     return obj
 
 
 
 
 
-# class StatisticsAPIView(generics.GenericAPIView):
-#     serializer_class = StatisticsSerializer
-#     def get(self, request, *args, **kwargs):
-#         plantations = Plantation.objects.all()
-#         total_issiqxonas = plantations.filter(plantation_type=2).aggregate(total_area=Sum('total_area'))['total_area'] or 0
-#         total_uzumzors = plantations.filter(plantation_type=1).aggregate(total_area=Sum('total_area'))['total_area'] or 0
-#         total_bogs = plantations.filter(plantation_type=3).aggregate(total_area=Sum('total_area'))['total_area'] or 0
-#         total_area = plantations.aggregate(total_area=Sum('total_area'))['total_area'] or 0
-#         total_fruit_areas = PlantationFruitArea.objects.aggregate(total_area=Sum('area'))['total_area'] or 0
 
 
-#         stats = {
-#             'total_issiqxonas': total_issiqxonas,
-#             'total_uzumzors': total_uzumzors,
-#             'total_bogs': total_bogs,
-#             'total_area': total_area,
-#             'total_fruit_areas': total_fruit_areas,
-#         }
-#         return Response(stats)
+class StatisticsAPIView(generics.GenericAPIView):
+    serializer_class = StatisticsSerializer
+    def get(self, request, *args, **kwargs):
+        plantations = Plantation.objects.all()
+        total_issiqxonas = plantations.filter(plantation_type=2).aggregate(total_area=Sum('total_area'))['total_area'] or 0
+        total_uzumzors = plantations.filter(plantation_type=1).aggregate(total_area=Sum('total_area'))['total_area'] or 0
+        total_bogs = plantations.filter(plantation_type=3).aggregate(total_area=Sum('total_area'))['total_area'] or 0
+        total_area = plantations.aggregate(total_area=Sum('total_area'))['total_area'] or 0
+        total_fruit_areas = PlantationFruitArea.objects.aggregate(total_area=Sum('area'))['total_area'] or 0
+
+
+        stats = {
+            'total_issiqxonas': total_issiqxonas,
+            'total_uzumzors': total_uzumzors,
+            'total_bogs': total_bogs,
+            'total_area': total_area,
+            'total_fruit_areas': total_fruit_areas,
+        }
+        return Response(stats)
 
 
 
 
 
-# class PlantationCoordinatesListCreateAPIView(generics.ListCreateAPIView):
-#     serializer_class = PlantationCoordinatesSerializer
-#     permission_classes = [IsDistrictOwnerForCoordinates]
-#     def get_queryset(self):
-#         user_districts = self.request.user.districts.all()
-#         return PlantationCoordinates.objects.filter(plantation__district__in=user_districts)
-#     def perform_create(self, serializer):
-#         plantation = self.request.data.get('plantation')
-#         serializer.save(plantation=plantation)
+class PlantationCoordinatesListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = PlantationCoordinatesSerializer
+    permission_classes = [IsDistrictOwnerForCoordinates]
+    def get_queryset(self):
+        user_districts = self.request.user.districts.all()
+        return PlantationCoordinates.objects.filter(plantation__district__in=user_districts)
+    def perform_create(self, serializer):
+        plantation = self.request.data.get('plantation')
+        serializer.save(plantation=plantation)
 
 
 
